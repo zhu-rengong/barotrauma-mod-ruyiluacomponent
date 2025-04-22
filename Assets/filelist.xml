@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<contentpackage name="RuyiLuaComponent" modversion="1.0" corepackage="False" gameversion="1.8.7.0">
+  <Item file="%ModDir%/RuyiLuaComponent/Items/Electricity/signalitems.xml" />
+  <Text file="%ModDir%/RuyiLuaComponent/Texts/English.xml" />
+  <Text file="%ModDir%/RuyiLuaComponent/Texts/SimplifiedChinese.xml" />
+</contentpackage>
