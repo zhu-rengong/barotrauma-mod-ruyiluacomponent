@@ -1,6 +1,7 @@
 // Many code snippets taken from MicroLua (https://steamcommunity.com/sharedfiles/filedetails/?id=3018125421) by Matheus
 
 using System;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +25,14 @@ namespace LuaForBarotraumaModdingId_4Rcf1ZQPqrsB6aA7O.Items.Components
 {
     partial class RuyiLuaComponent : ItemComponent, IClientSerializable, IServerSerializable
     {
+#if SERVER
+        public const bool IsServer = true;
+        public const bool IsClient = false;
+#else
+        public const bool IsServer = false;
+        public const bool IsClient = true;
+#endif
+
         private const string FIELD_NAME_IS_CLIENT = "isClient";
         private const string FIELD_NAME_IS_SERVER = "isServer";
         private const string FIELD_NAME_IS_SINGLEPLAYER = "isSingleplayer";
@@ -177,6 +186,13 @@ namespace LuaForBarotraumaModdingId_4Rcf1ZQPqrsB6aA7O.Items.Components
             }
         }
 
+        [Serialize(false, IsPropertySaveable.Yes, description: "Can the properties of the component be edited in-game in multiplayer. Use to prevent clients uploading a malicious code to the server."), Editable()]
+        public bool AllowInGameEditingInMultiplayer
+        {
+            get;
+            set;
+        }
+
         [InGameEditable, Serialize("", IsPropertySaveable.Yes, description: "A lua chunk to be complied.", alwaysUseInstanceValues: true)]
         public string Chunk
         {
@@ -194,14 +210,46 @@ namespace LuaForBarotraumaModdingId_4Rcf1ZQPqrsB6aA7O.Items.Components
 
                 if (!AllowCompile) { return; }
 
-                script = GameMain.LuaCs.Lua;
-
                 try
                 {
+                    if (GameMain.NetworkMember?.IsClient ?? false)
+                    {
+                        // Sandboxing
+                        // The following modules are prohibited:
+                        // LoadMethods, The load methods: "load", "loadsafe", "loadfile", "loadfilesafe", "dofile" and "require"
+                        // IO, The methods of "io" and "file" packages
+                        // OS_System, The methods of "os" package excluding those listed for OS_Time
+                        script = new Script(CoreModules.Preset_SoftSandbox | CoreModules.Debug & (~(CoreModules.LoadMethods | CoreModules.IO | CoreModules.OS_System)));
+                        script.Options.DebugPrint = (string o) => LuaCsLogger.LogMessage(o);
+                        script.Options.CheckThreadAccess = false;
+
+                        if (Path.GetDirectoryName(item.Prefab?.ContentPackage?.Path) is string packagePath)
+                        {
+                            LuaScriptLoader scriptLoader = new();
+                            scriptLoader.ModulePaths = new string[] { };
+                            script.Options.ScriptLoader = scriptLoader;
+                            script.Globals["setmodulepaths"] = (Action<string[]>)(str => scriptLoader.ModulePaths = str);
+                            script.Globals["require"] = (Func<string, Table, DynValue>)new LuaRequire(script).Require;
+                            script.Globals["LuaUserData"] = UserData.CreateStatic<LuaUserData>();
+
+                            string entryPath = Path.Combine(packagePath, "RuyiLuaComponent/Sandboxing/entry.lua");
+
+                            script.LoadFile(entryPath).Function.Call(Path.GetDirectoryName(Path.GetFullPath(entryPath)));
+
+                            script.Globals.Remove("setmodulepaths");
+                            script.Globals.Remove("require");
+                            script.Globals.Remove("LuaUserData");
+                        }
+                    }
+                    else
+                    {
+                        script = GameMain.LuaCs.Lua;
+                    }
+
                     var initialize = script.DoString($@"
 return function(_)
-    local {FIELD_NAME_IS_CLIENT} = CLIENT
-    local {FIELD_NAME_IS_SERVER} = SERVER
+    local {FIELD_NAME_IS_CLIENT} = _.{FIELD_NAME_IS_CLIENT}
+    local {FIELD_NAME_IS_SERVER} = _.{FIELD_NAME_IS_SERVER}
     local {FIELD_NAME_IS_SINGLEPLAYER} = _.{FIELD_NAME_IS_SINGLEPLAYER}
     local {FIELD_NAME_IS_MULTIPLAYER} = _.{FIELD_NAME_IS_MULTIPLAYER}
     local {FIELD_NAME_RUYI_LUA} = _.{FIELD_NAME_RUYI_LUA}
@@ -233,6 +281,8 @@ return function(_)
 end", codeFriendlyName: null);
 
                     var args = new Table(script);
+                    args[FIELD_NAME_IS_CLIENT] = IsClient;
+                    args[FIELD_NAME_IS_SERVER] = IsServer;
                     args[FIELD_NAME_IS_SINGLEPLAYER] = GameMain.IsSingleplayer;
                     args[FIELD_NAME_IS_MULTIPLAYER] = GameMain.IsMultiplayer;
                     args[FIELD_NAME_RUYI_LUA] = this;
@@ -271,7 +321,10 @@ end", codeFriendlyName: null);
 
         static RuyiLuaComponent()
         {
-            UserData.RegisterType<RuyiLuaComponent>();
+            if (!UserData.IsTypeRegistered<LuaUserData>())
+            {
+                UserData.RegisterType<RuyiLuaComponent>();
+            }
         }
 
         public RuyiLuaComponent(Item item, ContentXElement element) : base(item, element) { }
@@ -413,6 +466,11 @@ end", codeFriendlyName: null);
         public override void OnItemLoaded()
         {
             base.OnItemLoaded();
+
+            if (GameMain.IsMultiplayer && !AllowInGameEditingInMultiplayer)
+            {
+                AllowInGameEditing = false;
+            }
 
             foreach (var connection in item.Connections)
             {
