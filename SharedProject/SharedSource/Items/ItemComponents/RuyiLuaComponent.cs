@@ -33,16 +33,17 @@ namespace LuaForBarotraumaModdingId_4Rcf1ZQPqrsB6aA7O.Items.Components
         public const bool IsClient = true;
 #endif
 
-        private const string FIELD_NAME_IS_CLIENT = "isClient";
-        private const string FIELD_NAME_IS_SERVER = "isServer";
-        private const string FIELD_NAME_IS_SINGLEPLAYER = "isSingleplayer";
-        private const string FIELD_NAME_IS_MULTIPLAYER = "isMultiplayer";
-        private const string FIELD_NAME_RUYI_LUA = "ruyiLua";
-        private const string FIELD_NAME_OUT = "out";
-        private const string FIELD_NAME_CLEAR = nameof(clear);
-        private const string FIELD_NAME_READ_MEMORY = nameof(readMemory);
-        private const string FIELD_NAME_WRITE_MEMORY = nameof(writeMemory);
-        private const string FIELD_NAME_NET_SEND = nameof(netSend);
+        private const string LOCAL_NAME_IS_CLIENT = "isClient";
+        private const string LOCAL_NAME_IS_SERVER = "isServer";
+        private const string LOCAL_NAME_IS_SINGLEPLAYER = "isSingleplayer";
+        private const string LOCAL_NAME_IS_MULTIPLAYER = "isMultiplayer";
+        private const string LOCAL_NAME_GET_TOTAL_TIME = "GetTotalTime";
+        private const string LOCAL_NAME_RUYI_LUA = "ruyiLua";
+        private const string LOCAL_NAME_OUT = "out";
+        private const string LOCAL_NAME_CLEAR = nameof(clear);
+        private const string LOCAL_NAME_READ_MEMORY = nameof(readMemory);
+        private const string LOCAL_NAME_WRITE_MEMORY = nameof(writeMemory);
+        private const string LOCAL_NAME_NET_SEND = nameof(netSend);
         private const string UPVALUE_NAME_ON_ITEM_LOADED = nameof(onItemLoaded);
         private const string UPVALUE_NAME_ON_MAP_LOADED = nameof(onMapLoaded);
         private const string UPVALUE_NAME_ON_SAVE = nameof(onSave);
@@ -88,7 +89,7 @@ namespace LuaForBarotraumaModdingId_4Rcf1ZQPqrsB6aA7O.Items.Components
                 && scriptMainProcessor.GetCurrentSourceRef(e.InstructionPtr) is var sref
                 && sref is not null)
             {
-                int chunkRelativeToCodeStartLineOffset = 20;
+                int chunkRelativeToCodeStartLineOffset = 21;
                 int chunkRelativeToCodeEndLineOffset = 12;
                 string? location;
                 string? errorSource;
@@ -248,16 +249,17 @@ namespace LuaForBarotraumaModdingId_4Rcf1ZQPqrsB6aA7O.Items.Components
 
                     var initialize = script.DoString($@"
 return function(_)
-    local {FIELD_NAME_IS_CLIENT} = _.{FIELD_NAME_IS_CLIENT}
-    local {FIELD_NAME_IS_SERVER} = _.{FIELD_NAME_IS_SERVER}
-    local {FIELD_NAME_IS_SINGLEPLAYER} = _.{FIELD_NAME_IS_SINGLEPLAYER}
-    local {FIELD_NAME_IS_MULTIPLAYER} = _.{FIELD_NAME_IS_MULTIPLAYER}
-    local {FIELD_NAME_RUYI_LUA} = _.{FIELD_NAME_RUYI_LUA}
-    local {FIELD_NAME_OUT} = _.{FIELD_NAME_OUT}
-    local {FIELD_NAME_CLEAR} = _.{FIELD_NAME_CLEAR}
-    local {FIELD_NAME_READ_MEMORY} = _.{FIELD_NAME_READ_MEMORY}
-    local {FIELD_NAME_WRITE_MEMORY} = _.{FIELD_NAME_WRITE_MEMORY}
-    local {FIELD_NAME_NET_SEND} = _.{FIELD_NAME_NET_SEND}
+    local {LOCAL_NAME_IS_CLIENT} = _.{LOCAL_NAME_IS_CLIENT}
+    local {LOCAL_NAME_IS_SERVER} = _.{LOCAL_NAME_IS_SERVER}
+    local {LOCAL_NAME_IS_SINGLEPLAYER} = _.{LOCAL_NAME_IS_SINGLEPLAYER}
+    local {LOCAL_NAME_IS_MULTIPLAYER} = _.{LOCAL_NAME_IS_MULTIPLAYER}
+    local {LOCAL_NAME_GET_TOTAL_TIME} = _.{LOCAL_NAME_GET_TOTAL_TIME}
+    local {LOCAL_NAME_RUYI_LUA} = _.{LOCAL_NAME_RUYI_LUA}
+    local {LOCAL_NAME_OUT} = _.{LOCAL_NAME_OUT}
+    local {LOCAL_NAME_CLEAR} = _.{LOCAL_NAME_CLEAR}
+    local {LOCAL_NAME_READ_MEMORY} = _.{LOCAL_NAME_READ_MEMORY}
+    local {LOCAL_NAME_WRITE_MEMORY} = _.{LOCAL_NAME_WRITE_MEMORY}
+    local {LOCAL_NAME_NET_SEND} = _.{LOCAL_NAME_NET_SEND}
     local {UPVALUE_NAME_ON_ITEM_LOADED}
     local {UPVALUE_NAME_ON_MAP_LOADED}
     local {UPVALUE_NAME_ON_SAVE}
@@ -281,16 +283,17 @@ return function(_)
 end", codeFriendlyName: null);
 
                     var args = new Table(script);
-                    args[FIELD_NAME_IS_CLIENT] = IsClient;
-                    args[FIELD_NAME_IS_SERVER] = IsServer;
-                    args[FIELD_NAME_IS_SINGLEPLAYER] = GameMain.IsSingleplayer;
-                    args[FIELD_NAME_IS_MULTIPLAYER] = GameMain.IsMultiplayer;
-                    args[FIELD_NAME_RUYI_LUA] = this;
-                    args[FIELD_NAME_OUT] = UserData.Create(this, new OutDescriptor());
-                    args[FIELD_NAME_CLEAR] = DynValue.NewCallback(clear);
-                    args[FIELD_NAME_READ_MEMORY] = DynValue.NewCallback(readMemory);
-                    args[FIELD_NAME_WRITE_MEMORY] = DynValue.NewCallback(writeMemory);
-                    args[FIELD_NAME_NET_SEND] = DynValue.NewCallback(netSend);
+                    args[LOCAL_NAME_IS_CLIENT] = IsClient;
+                    args[LOCAL_NAME_IS_SERVER] = IsServer;
+                    args[LOCAL_NAME_IS_SINGLEPLAYER] = GameMain.IsSingleplayer;
+                    args[LOCAL_NAME_IS_MULTIPLAYER] = GameMain.IsMultiplayer;
+                    args[LOCAL_NAME_GET_TOTAL_TIME] = DynValue.NewCallback((ctx, args) => DynValue.NewNumber(Timing.TotalTime));
+                    args[LOCAL_NAME_RUYI_LUA] = this;
+                    args[LOCAL_NAME_OUT] = UserData.Create(this, new OutDescriptor());
+                    args[LOCAL_NAME_CLEAR] = DynValue.NewCallback(clear);
+                    args[LOCAL_NAME_READ_MEMORY] = DynValue.NewCallback(readMemory);
+                    args[LOCAL_NAME_WRITE_MEMORY] = DynValue.NewCallback(writeMemory);
+                    args[LOCAL_NAME_NET_SEND] = DynValue.NewCallback(netSend);
                     var internalClosure = script.Call(initialize, DynValue.NewTable(args)).Function;
 
                     Dictionary<string, DynValue> nameMapUpvalue = new(
@@ -321,7 +324,7 @@ end", codeFriendlyName: null);
 
         static RuyiLuaComponent()
         {
-            if (!UserData.IsTypeRegistered<LuaUserData>())
+            if (!UserData.IsTypeRegistered<RuyiLuaComponent>())
             {
                 UserData.RegisterType<RuyiLuaComponent>();
             }
